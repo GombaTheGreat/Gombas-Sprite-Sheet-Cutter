@@ -1,0 +1,13 @@
+gradio>=4.0
+opencv-python-headless
+Pillow
+numpy
+scipy
+rembg[gpu]
+# ToonOut / BiRefNet — anime-optimised background removal (model weights ~885 MB, download on first use)
+torch
+torchvision
+transformers
+einops
+kornia
+timm

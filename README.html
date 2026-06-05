@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Gomba's Sprite Sheet Cutter</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fira+Code:wght@400;500&display=swap');
+
+    :root {
+      --bg:        #2a2724;
+      --surface:   #34312D;
+      --surface2:  #3d3a35;
+      --border:    #4a4640;
+      --accent:    #CC5803;
+      --accent2:   #f09050;
+      --text:      #e8e4de;
+      --muted:     #9a9490;
+      --green:     #56cfab;
+      --red:       #f77070;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', sans-serif;
+      font-size: 15px;
+      line-height: 1.7;
+      padding: 40px 20px 80px;
+    }
+
+    .container {
+      max-width: 860px;
+      margin: 0 auto;
+    }
+
+    /* ── Hero ─────────────────────────────────────────────────────── */
+    .hero {
+      text-align: center;
+      padding: 60px 20px 48px;
+      background: linear-gradient(135deg, #34312D 0%, #2a2724 100%);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      margin-bottom: 40px;
+      position: relative;
+      overflow: hidden;
+    }
+    .hero::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(ellipse at 60% 0%, rgba(204,88,3,0.20) 0%, transparent 65%),
+                  radial-gradient(ellipse at 20% 100%, rgba(240,144,80,0.12) 0%, transparent 55%);
+      pointer-events: none;
+    }
+    .hero-logo {
+      width: 256px;
+      height: 256px;
+      object-fit: contain;
+      margin-bottom: 20px;
+      filter: drop-shadow(0 4px 16px rgba(204,88,3,0.45));
+    }
+    .hero h1 {
+      font-size: 2.2rem;
+      font-weight: 700;
+      background: linear-gradient(90deg, #CC5803, #f09050);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 10px;
+    }
+    .hero .tagline {
+      color: var(--muted);
+      font-size: 0.95rem;
+      font-style: italic;
+    }
+
+    /* ── Sections ─────────────────────────────────────────────────── */
+    section {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 32px 36px;
+      margin-bottom: 24px;
+    }
+
+    h2 {
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: var(--accent);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 18px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    h2 .icon { font-style: normal; }
+
+    p { color: var(--text); margin-bottom: 12px; }
+    p:last-child { margin-bottom: 0; }
+
+    /* ── Feature list ─────────────────────────────────────────────── */
+    .features {
+      list-style: none;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+    @media (max-width: 600px) { .features { grid-template-columns: 1fr; } }
+    .features li {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 14px 16px;
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+    }
+    .features li .feat-icon { font-size: 1.2rem; flex-shrink: 0; margin-top: 1px; }
+    .features li .feat-text strong { display: block; color: var(--text); font-weight: 600; font-size: 0.9rem; }
+    .features li .feat-text span { color: var(--muted); font-size: 0.83rem; }
+
+    /* ── Steps ────────────────────────────────────────────────────── */
+    .steps { list-style: none; counter-reset: steps; }
+    .steps li {
+      counter-increment: steps;
+      display: flex;
+      gap: 14px;
+      align-items: flex-start;
+      padding: 14px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .steps li:last-child { border-bottom: none; padding-bottom: 0; }
+    .steps li::before {
+      content: counter(steps);
+      background: var(--accent);
+      color: #fff;
+      font-weight: 700;
+      font-size: 0.8rem;
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+    .steps li p { margin: 0; }
+    .steps li code {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 5px;
+      padding: 1px 7px;
+      font-family: 'Fira Code', monospace;
+      font-size: 0.85em;
+      color: var(--accent2);
+    }
+
+    /* ── License table ────────────────────────────────────────────── */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.88rem;
+    }
+    th {
+      text-align: left;
+      color: var(--muted);
+      font-weight: 600;
+      font-size: 0.78rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      padding: 8px 12px;
+      border-bottom: 1px solid var(--border);
+    }
+    td {
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--border);
+      vertical-align: top;
+    }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: var(--surface2); }
+    td a { color: var(--accent); text-decoration: none; }
+    td a:hover { text-decoration: underline; }
+    td strong { color: var(--text); }
+
+    /* ── Note from Gomba ──────────────────────────────────────────── */
+    .gomba-note {
+      background: linear-gradient(135deg, #3d2a1a, #34312D);
+      border-left: 4px solid var(--accent2);
+    }
+    .gomba-note p { color: #d4cfc8; }
+    .gomba-note .sign {
+      margin-top: 20px;
+      color: var(--accent2);
+      font-weight: 600;
+      font-size: 1rem;
+    }
+
+    /* ── Disclaimer ───────────────────────────────────────────────── */
+    .disclaimer { border-color: #3a2e2e; }
+    .disclaimer h2 { color: var(--red); }
+    .disclaimer p { color: var(--muted); font-size: 0.88rem; }
+
+    /* ── Footer ───────────────────────────────────────────────────── */
+    footer {
+      text-align: center;
+      color: var(--muted);
+      font-size: 0.82rem;
+      margin-top: 40px;
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+
+  <!-- Hero -->
+  <div class="hero">
+    <img src="logo.png" alt="Gomba's Sprite Sheet Cutter" class="hero-logo" />
+    <h1>Gomba's Sprite Sheet Cutter</h1>
+    <p class="tagline">A small tool made with care, by Gomba.</p>
+  </div>
+
+  <!-- What is this -->
+  <section>
+    <h2><span class="icon">💡</span> What is this?</h2>
+    <p>
+      If you've ever commissioned or downloaded a beautiful set of emoji stickers or sprite sheets
+      and spent an afternoon manually cutting each little character out one by one — this tool is for you.
+    </p>
+    <p>
+      <strong>Gomba's Sprite Sheet Cutter</strong> takes your sprite sheets, removes the background,
+      automatically detects every individual sprite, and exports them as clean, numbered PNG files
+      ready to upload straight to Discord, Twitch, or wherever your characters belong.
+    </p>
+    <p>Drop in a sheet. Hit Process. Download your emojis. That's it.</p>
+  </section>
+
+  <!-- Features -->
+  <section>
+    <h2><span class="icon">⚡</span> Features</h2>
+    <ul class="features">
+      <li>
+        <span class="feat-icon">🎨</span>
+        <span class="feat-text">
+          <strong>Three BG removal methods</strong>
+          <span>Fast flood-fill, AI/rembg models, and ToonOut — a BiRefNet fine-tuned for anime characters</span>
+        </span>
+      </li>
+      <li>
+        <span class="feat-icon">✂️</span>
+        <span class="feat-text">
+          <strong>Auto sprite detection</strong>
+          <span>Finds every sprite automatically using connected-component analysis — no manual cropping</span>
+        </span>
+      </li>
+      <li>
+        <span class="feat-icon">🔢</span>
+        <span class="feat-text">
+          <strong>Batch processing</strong>
+          <span>Drop in multiple sheets at once, sprites numbered sequentially across all of them</span>
+        </span>
+      </li>
+      <li>
+        <span class="feat-icon">📐</span>
+        <span class="feat-text">
+          <strong>Resize to any size</strong>
+          <span>Built-in letterbox resize — defaults to 128×128, perfect for Discord emojis</span>
+        </span>
+      </li>
+      <li>
+        <span class="feat-icon">🖼️</span>
+        <span class="feat-text">
+          <strong>Live edge preview</strong>
+          <span>Inspect results against black, white, or checkerboard backgrounds — no need to download first</span>
+        </span>
+      </li>
+      <li>
+        <span class="feat-icon">🧹</span>
+        <span class="feat-text">
+          <strong>Edge cleanup tools</strong>
+          <span>Defringe with strength &amp; spread controls, plus contract, smooth, and feather — for pixel-perfect edges</span>
+        </span>
+      </li>
+      <li>
+        <span class="feat-icon">🔬</span>
+        <span class="feat-text">
+          <strong>Eyedropper color picker</strong>
+          <span>Click directly on the sprite sheet to sample the background color for defringe — no hex codes needed</span>
+        </span>
+      </li>
+      <li>
+        <span class="feat-icon">🔗</span>
+        <span class="feat-text">
+          <strong>Auto-merge proximity</strong>
+          <span>Automatically joins sprites whose edges are within N pixels — great for characters with floating sparkles, hearts, or accessories</span>
+        </span>
+      </li>
+      <li>
+        <span class="feat-icon">✏️</span>
+        <span class="feat-text">
+          <strong>Manual merge</strong>
+          <span>Type <code style="background:#22263a;padding:1px 5px;border-radius:4px;color:#f7976a;">3+14+15</code> to join specific numbered sprites into one box — instant ZIP re-export, no reprocessing</span>
+        </span>
+      </li>
+    </ul>
+  </section>
+
+  <!-- Installation -->
+  <section>
+    <h2><span class="icon">🚀</span> Installation</h2>
+    <p style="margin-bottom:20px;">
+      <strong>Requires:</strong> Python 3.10 or higher —
+      <a href="https://www.python.org" style="color:var(--accent);">python.org</a>
+    </p>
+    <ol class="steps">
+      <li><p>Unzip this folder anywhere on your computer</p></li>
+      <li><p>Double-click <code>launch.bat</code></p></li>
+      <li><p>The first launch automatically creates a virtual environment and installs all dependencies. This may take a few minutes — AI models are downloaded on first use.</p></li>
+      <li><p>The app opens in your browser at <code>http://127.0.0.1:7860</code></p></li>
+      <li><p><em>Optional:</em> Double-click <code>create_shortcut.bat</code> to add a Desktop shortcut</p></li>
+    </ol>
+    <p style="margin-top:18px; color:var(--muted); font-size:0.88rem;">
+      Every subsequent launch just runs <code>launch.bat</code> — updates and new packages install automatically.
+    </p>
+  </section>
+
+  <!-- Licensing -->
+  <section>
+    <h2><span class="icon">📄</span> Model Licensing</h2>
+    <p style="margin-bottom:20px; color:var(--muted); font-size:0.88rem;">
+      This app uses several open-source AI models. Their respective licenses apply.
+    </p>
+    <table>
+      <thead>
+        <tr>
+          <th>Model / Library</th>
+          <th>Author</th>
+          <th>License</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>rembg</strong></td>
+          <td>Daniel Gatis</td>
+          <td><a href="https://github.com/danielgatis/rembg/blob/main/LICENSE.txt" target="_blank">MIT License</a></td>
+        </tr>
+        <tr>
+          <td><strong>BiRefNet</strong> (base architecture)</td>
+          <td>ZhengPeng7</td>
+          <td><a href="https://github.com/ZhengPeng7/BiRefNet/blob/main/LICENSE" target="_blank">MIT License</a></td>
+        </tr>
+        <tr>
+          <td><strong>ToonOut</strong> (BiRefNet fine-tune)</td>
+          <td>joelseytre / MatteoKartoon</td>
+          <td><a href="https://github.com/MatteoKartoon/BiRefNet" target="_blank">BiRefNet license applies</a></td>
+        </tr>
+        <tr>
+          <td><strong>isnet-anime / isnet-general-use</strong></td>
+          <td>xuebinqin</td>
+          <td><a href="https://github.com/xuebinqin/DIS" target="_blank">MIT License</a></td>
+        </tr>
+        <tr>
+          <td><strong>u2net</strong></td>
+          <td>xuebinqin</td>
+          <td><a href="https://github.com/xuebinqin/U-2-Net/blob/master/LICENSE" target="_blank">Apache 2.0</a></td>
+        </tr>
+        <tr>
+          <td><strong>Gradio</strong></td>
+          <td>Hugging Face</td>
+          <td><a href="https://github.com/gradio-app/gradio/blob/main/LICENSE" target="_blank">Apache 2.0</a></td>
+        </tr>
+        <tr>
+          <td><strong>PyTorch</strong></td>
+          <td>Meta / PyTorch team</td>
+          <td><a href="https://github.com/pytorch/pytorch/blob/main/LICENSE" target="_blank">BSD License</a></td>
+        </tr>
+      </tbody>
+    </table>
+    <p style="margin-top:16px; color:var(--muted); font-size:0.83rem;">
+      This tool itself is free to use and share. Please respect the licenses of the underlying models, especially for commercial use.
+    </p>
+  </section>
+
+  <!-- Note from Gomba -->
+  <section class="gomba-note">
+    <h2><span class="icon">🧡</span> A note from Gomba</h2>
+    <p>
+      This little app started as a personal headache — I love personalized sprites and emojis,
+      but who has the time to manually clean the background and then save each sprite as a separate
+      PNG file at the correct sizes? I don't! I hope it saves you the same frustration it saved me.
+    </p>
+    <p>
+      If it brings even a little joy to your Discord server or creative project, that's more than enough.
+    </p>
+    <p>Take care of yourselves, and happy emote-making. 🧡</p>
+    <p class="sign">— Gomba</p>
+  </section>
+
+  <!-- Disclaimer -->
+  <section class="disclaimer">
+    <h2><span class="icon">⚠️</span> Disclaimer</h2>
+    <p>
+      This software is provided <strong>"as is"</strong>, without warranty of any kind, express or implied —
+      including but not limited to warranties of merchantability, fitness for a particular purpose, or non-infringement.
+    </p>
+    <p>
+      Gomba is not responsible for any damages, data loss, system issues, or other consequences arising
+      from the use or inability to use this application. You use it entirely at your own risk.
+    </p>
+    <p>
+      The AI models bundled or downloaded by this tool are the work of their respective authors.
+      Their quality, accuracy, and fitness for any particular purpose are not guaranteed.
+    </p>
+    <p>
+      By using this app you agree that Gomba cannot be held liable for anything this software does or fails to do.
+    </p>
+  </section>
+
+  <footer>
+    Built with Python, Gradio, rembg, PyTorch, and a lot of caffeine.
+  </footer>
+
+</div>
+</body>
+</html>
