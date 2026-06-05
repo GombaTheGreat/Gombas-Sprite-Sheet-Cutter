@@ -1,5 +1,25 @@
 # Gomba's Sprite Sheet Cutter
 
+<p align="center">
+  <img src="logo.png" alt="Gomba's Sprite Sheet Cutter" width="280" />
+</p>
+
+> Drop in a sprite sheet, hit Process, download clean numbered PNGs — ready for Discord, Twitch, or your game engine.
+
+[![Version](https://img.shields.io/badge/version-1.0-CC5803.svg)](https://github.com/GombaTheGreat/Gombas-Sprite-Sheet-Cutter/releases)
+[![Platform](https://img.shields.io/badge/platform-Windows-0078d4.svg)](https://github.com/GombaTheGreat/Gombas-Sprite-Sheet-Cutter/releases)
+[![Python](https://img.shields.io/badge/python-3.10+-3776ab.svg)](https://www.python.org)
+
+<p align="center">
+  <a href="https://gombathegreats.github.io/Gombas-Sprite-Sheet-Cutter/">
+    <img src="https://img.shields.io/badge/🌐%20View%20Showcase%20Page-Visit-CC5803?style=for-the-badge" alt="View Showcase Page" />
+  </a>
+  &nbsp;&nbsp;
+  <a href="https://github.com/GombaTheGreat/Gombas-Sprite-Sheet-Cutter/releases/latest">
+    <img src="https://img.shields.io/badge/⬇%20Download-v1.0-f09050?style=for-the-badge" alt="Download v1.0" />
+  </a>
+</p>
+
 *A small tool made with care, by Gomba.*
 
 ---

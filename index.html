@@ -188,6 +188,24 @@
     td strong { color: var(--text); }
 
     /* ── Note from Gomba ──────────────────────────────────────────── */
+    .dl-btn {
+      display: inline-block;
+      margin-top: 24px;
+      padding: 14px 36px;
+      background: linear-gradient(135deg, #CC5803, #f09050);
+      color: #fff;
+      font-weight: 700;
+      font-size: 1rem;
+      border-radius: 10px;
+      text-decoration: none;
+      letter-spacing: 0.03em;
+      box-shadow: 0 4px 20px rgba(204,88,3,0.45);
+      transition: opacity 0.15s;
+      position: relative;
+      z-index: 1;
+    }
+    .dl-btn:hover { opacity: 0.85; }
+
     .gomba-note {
       background: linear-gradient(135deg, #3d2a1a, #34312D);
       border-left: 4px solid var(--accent2);
@@ -222,6 +240,7 @@
     <img src="logo.png" alt="Gomba's Sprite Sheet Cutter" class="hero-logo" />
     <h1>Gomba's Sprite Sheet Cutter</h1>
     <p class="tagline">A small tool made with care, by Gomba.</p>
+    <a href="https://github.com/GombaTheGreat/Gombas-Sprite-Sheet-Cutter/releases/latest" class="dl-btn">⬇ Download v1.0</a>
   </div>
 
   <!-- What is this -->
