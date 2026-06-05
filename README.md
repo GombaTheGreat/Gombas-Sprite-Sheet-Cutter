@@ -11,7 +11,7 @@
 [![Python](https://img.shields.io/badge/python-3.10+-3776ab.svg)](https://www.python.org)
 
 <p align="center">
-  <a href="https://gombathegreats.github.io/Gombas-Sprite-Sheet-Cutter/">
+  <a href="https://gombathegreat.github.io/Gombas-Sprite-Sheet-Cutter/">
     <img src="https://img.shields.io/badge/🌐%20View%20Showcase%20Page-Visit-CC5803?style=for-the-badge" alt="View Showcase Page" />
   </a>
   &nbsp;&nbsp;
