@@ -6,9 +6,9 @@
 
 > Drop in a sprite sheet, hit Process, download clean numbered PNGs — ready for Discord, Twitch, or your game engine.
 
-[![Version](https://img.shields.io/badge/version-1.1-CC5803.svg)](https://github.com/GombaTheGreat/Gombas-Sprite-Sheet-Cutter/releases)
+[![Version](badges/version.svg)](https://github.com/GombaTheGreat/Gombas-Sprite-Sheet-Cutter/releases)
 [![Platform](https://img.shields.io/badge/platform-Windows-0078d4.svg)](https://github.com/GombaTheGreat/Gombas-Sprite-Sheet-Cutter/releases)
-[![Python](https://img.shields.io/badge/python-3.10+-3776ab.svg)](https://www.python.org)
+[![Python](badges/python.svg)](https://www.python.org)
 
 <p align="center">
   <a href="https://gombathegreat.github.io/Gombas-Sprite-Sheet-Cutter/">
@@ -16,7 +16,7 @@
   </a>
   &nbsp;&nbsp;
   <a href="https://github.com/GombaTheGreat/Gombas-Sprite-Sheet-Cutter/releases/latest">
-    <img src="https://img.shields.io/badge/⬇%20Download-v1.1-f09050?style=for-the-badge" alt="Download v1.1" />
+    <img src="badges/download-v1.1.svg" alt="Download v1.1" />
   </a>
 </p>
 
