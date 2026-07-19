@@ -12,8 +12,7 @@
 
 <p align="center">
   <a href="https://gombathegreat.github.io/Gombas-Sprite-Sheet-Cutter/">
-    <img src="https://img.shields.io/badge/🌐%20View%20Showcase%20Page-Visit-CC5803?style=for-the-badge" alt="View Showcase Page" />
-  </a>
+    <img src="https://img.shields.io/badge/🌐%20View%20Showcase%20Page-Visit-CC5803?style=for-the-badge" alt="View Showcase Page"/></a>
   &nbsp;&nbsp;
   <a href="https://github.com/GombaTheGreat/Gombas-Sprite-Sheet-Cutter/releases/latest">
     <img src="badges/download-v1.1.svg" alt="Download v1.1" />
