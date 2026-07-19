@@ -240,7 +240,7 @@
     <img src="logo.png" alt="Gomba's Sprite Sheet Cutter" class="hero-logo" />
     <h1>Gomba's Sprite Sheet Cutter</h1>
     <p class="tagline">A small tool made with care, by Gomba.</p>
-    <a href="https://github.com/GombaTheGreat/Gombas-Sprite-Sheet-Cutter/releases/latest" class="dl-btn">⬇ Download v1.0</a>
+    <a href="https://github.com/GombaTheGreat/Gombas-Sprite-Sheet-Cutter/releases/latest" class="dl-btn">⬇ Download v1.1</a>
   </div>
 
   <!-- What is this -->
@@ -265,15 +265,15 @@
       <li>
         <span class="feat-icon">🎨</span>
         <span class="feat-text">
-          <strong>Three BG removal methods</strong>
-          <span>Fast flood-fill, AI/rembg models, and ToonOut — a BiRefNet fine-tuned for anime characters</span>
+          <strong>Four BG removal options</strong>
+          <span>AI/rembg models, anime-specialist ToonOut, Lucida for illustration and soft transparency, or Skip for existing alpha</span>
         </span>
       </li>
       <li>
         <span class="feat-icon">✂️</span>
         <span class="feat-text">
           <strong>Auto sprite detection</strong>
-          <span>Finds every sprite automatically using connected-component analysis — no manual cropping</span>
+          <span>Finds every sprite automatically with minimum width and height controls, then reports each crop's dimensions</span>
         </span>
       </li>
       <li>
@@ -314,8 +314,8 @@
       <li>
         <span class="feat-icon">🔗</span>
         <span class="feat-text">
-          <strong>Auto-merge proximity</strong>
-          <span>Automatically joins sprites whose edges are within N pixels — great for characters with floating sparkles, hearts, or accessories</span>
+          <strong>Auto-merge center proximity</strong>
+          <span>Joins parts whose bounding-box centers are within N pixels, reducing accidental merges between neighboring full sprites</span>
         </span>
       </li>
       <li>
@@ -378,6 +378,11 @@
           <td><a href="https://github.com/MatteoKartoon/BiRefNet" target="_blank">BiRefNet license applies</a></td>
         </tr>
         <tr>
+          <td><strong>Lucida</strong> (BiRefNet fine-tune)</td>
+          <td>Ege Orçun</td>
+          <td><a href="https://huggingface.co/egeorcun/lucida" target="_blank">MIT model and code</a></td>
+        </tr>
+        <tr>
           <td><strong>isnet-anime / isnet-general-use</strong></td>
           <td>xuebinqin</td>
           <td><a href="https://github.com/xuebinqin/DIS" target="_blank">MIT License</a></td>
@@ -400,7 +405,7 @@
       </tbody>
     </table>
     <p style="margin-top:16px; color:var(--muted); font-size:0.83rem;">
-      This tool itself is free to use and share. Please respect the licenses of the underlying models, especially for commercial use.
+      This tool itself is free to use and share. Please respect the licenses of the underlying models, especially for commercial use. Lucida's author documents its mixed training-data licenses in the <a href="https://github.com/egeorcun/lucida" target="_blank">Lucida repository</a>.
     </p>
   </section>
 

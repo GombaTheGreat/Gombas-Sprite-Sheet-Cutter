@@ -7,13 +7,14 @@ from PIL import Image
 
 def detect_sprites(
     rgba_image: Image.Image,
-    min_area: int = 500,
+    min_width: int = 8,
+    min_height: int = 8,
     padding: int = 4,
 ) -> list[tuple[int, int, int, int]]:
     """Return bounding boxes (x1, y1, x2, y2) for each detected sprite.
 
     Detection is based on the alpha channel — any region of opaque pixels
-    that forms a connected component larger than min_area is treated as one
+    whose bounding box meets the minimum width and height is treated as one
     sprite. Results are sorted top-to-bottom, left-to-right (row-major).
     """
     arr = np.array(rgba_image.convert("RGBA"), dtype=np.uint8)
@@ -28,13 +29,12 @@ def detect_sprites(
 
     bboxes: list[tuple[int, int, int, int]] = []
     for lbl in range(1, num_labels):
-        area = int(stats[lbl, cv2.CC_STAT_AREA])
-        if area < min_area:
-            continue
         x = int(stats[lbl, cv2.CC_STAT_LEFT])
         y = int(stats[lbl, cv2.CC_STAT_TOP])
         bw = int(stats[lbl, cv2.CC_STAT_WIDTH])
         bh = int(stats[lbl, cv2.CC_STAT_HEIGHT])
+        if bw < min_width or bh < min_height:
+            continue
 
         x1 = max(0, x - padding)
         y1 = max(0, y - padding)
@@ -86,7 +86,7 @@ def merge_nearby_bboxes(
     bboxes: list[tuple[int, int, int, int]],
     distance: int,
 ) -> list[tuple[int, int, int, int]]:
-    """Merge bounding boxes whose edges are within `distance` pixels of each other.
+    """Merge boxes whose centers are within `distance` pixels of each other.
 
     Useful for grouping a main sprite with nearby sparkles / accessories that
     were detected as separate components.
@@ -100,9 +100,11 @@ def merge_nearby_bboxes(
         for j in range(i + 1, n):
             x1a, y1a, x2a, y2a = bboxes[i]
             x1b, y1b, x2b, y2b = bboxes[j]
-            h_gap = max(0, max(x1a, x1b) - min(x2a, x2b))
-            v_gap = max(0, max(y1a, y1b) - min(y2a, y2b))
-            if h_gap <= distance and v_gap <= distance:
+            center_ax = (x1a + x2a) / 2
+            center_ay = (y1a + y2a) / 2
+            center_bx = (x1b + x2b) / 2
+            center_by = (y1b + y2b) / 2
+            if (center_ax - center_bx) ** 2 + (center_ay - center_by) ** 2 <= distance ** 2:
                 pairs.append((i, j))
 
     return _merge_groups(bboxes, _union_find_groups(n, pairs))
@@ -184,4 +186,4 @@ def draw_bboxes(
             cv2.LINE_AA,
         )
 
-    return Image.fromarray(vis, "RGB")
+    return Image.fromarray(vis)

@@ -30,7 +30,7 @@ bg_remover.py   sprite_detector.py   sprite_cutter.py
  edge cleanup)
        │               │
        ▼               ▼
-rembg / PyTorch    OpenCV / SciPy
+rembg / PyTorch    OpenCV / NumPy
 (AI model weights) (connected components)
 ```
 
@@ -83,13 +83,13 @@ The application entry point. Defines the Gradio interface, all event callbacks, 
 
 **Core pipeline**
 
-`_process_one(img, bg_method, tolerance, ai_model, do_defringe, defringe_hex, defringe_strength, defringe_spread, refine_smooth, refine_expand, refine_feather, min_area, padding, merge_distance, do_resize, target_size, preview_bg) -> (preview_img, sprites, rgba, bboxes)`
+`_process_one(img, bg_method, ai_model, do_defringe, defringe_hex, defringe_strength, defringe_spread, refine_smooth, refine_expand, refine_feather, min_width, min_height, padding, merge_distance, do_resize, target_size, preview_bg) -> (preview_img, sprites, rgba, bboxes)`
 
 Single-sheet pipeline. Executes stages in order: BG removal → defringe → refine → detect → proximity-merge → draw_bboxes → cut_sprites. Returns the gallery preview image, sprite list, and the RGBA + bbox pair for caching.
 
 `process(input_files, ...) -> (gallery_images, status_str, zip_path, sheet_data)`
 
-Batch wrapper — iterates uploaded files, calls `_process_one` for each, aggregates all sprites, writes a temp ZIP, returns Gradio outputs. The `sheet_data` return populates `sheet_state`.
+Batch wrapper — iterates uploaded files, calls `_process_one` for each, aggregates all sprites, writes a temp ZIP, and returns Gradio outputs including each numbered crop's pre-resize width × height. The `sheet_data` return populates `sheet_state`.
 
 `process_with_preset(...)`
 
@@ -113,11 +113,15 @@ UI helpers that fire on file upload to populate the input gallery and sampler im
 
 `toggle_method_controls(method)`
 
-Shows/hides the tolerance slider (Flood-fill), AI model dropdown (AI/rembg), or neither (ToonOut / Skip) based on the selected method.
+Shows the AI model dropdown only for AI/rembg. ToonOut, Lucida, and Skip need no method-specific controls. Switching methods resets optional defringe, sampler visibility, and contraction controls to neutral defaults.
+
+`toggle_defringe_controls(enabled, preset)`
+
+Synchronizes the defringe rows with the checkbox. Disabling cleanup hides and resets the custom color sampler; enabling it restores the sampler button only for the Custom preset.
 
 `on_defringe_preset(preset)`
 
-Shows/hides the hex color picker and updates `defringe_strength` and `defringe_spread` to sensible defaults when the preset changes.
+Shows or hides the custom color picker and sampler controls, and resets the sampler's open state when the preset changes.
 
 **Theme**
 
@@ -127,17 +131,13 @@ A custom dark bronze aesthetic is applied via a `gr.themes.Soft` instance (`_THE
 
 ### bg_remover.py — Background Removal & Alpha Refinement
 
-Handles all operations that modify the alpha channel: initial background removal by three different methods, color defringing at semi-transparent edges, and alpha mask refinement.
+Handles all operations that modify the alpha channel: model-based background removal, color defringing at semi-transparent edges, and alpha mask refinement.
 
 **Constants**
 
 `REMBG_MODELS: list[str]` — 15 model names exposed to `app.py` for the AI model dropdown.
 
 **Background removal**
-
-`remove_bg_floodfill(pil_image, tolerance=30) -> Image`
-
-Connected-component flood-fill approach. Converts to RGB, thresholds white pixels (`channel >= 255 - tolerance`), uses `scipy.ndimage.label` to label connected regions, then identifies which components touch the image border (these are background). Sets their alpha to 0. Does not require any model weights.
 
 `remove_bg_ai(pil_image, model_name="isnet-anime") -> Image`
 
@@ -149,7 +149,19 @@ Downloads `birefnet_finetuned_toonout.pth` from `joelseytre/toonout` on Hugging 
 
 `remove_bg_toonout(pil_image) -> Image`
 
-Calls `_load_toonout`, resizes input to 1024×1024, normalizes with ImageNet mean/std via `torchvision.transforms`, runs inference, resizes the predicted mask back to the original image dimensions, composites as the alpha channel, normalizes alpha.
+Calls `_load_toonout`, then forwards the model to `_run_birefnet`.
+
+`_load_lucida() -> (model, device)`
+
+Loads the complete `egeorcun/lucida` Hugging Face model at pinned revision `a34eeda32a7f43b487e7a30532153f47946512fa`, moves it to CUDA when available, and caches it in `_lucida_model` / `_lucida_device`.
+
+`remove_bg_lucida(pil_image) -> Image`
+
+Calls `_load_lucida`, then forwards the model to `_run_birefnet`.
+
+`_run_birefnet(pil_image, model, device) -> Image`
+
+Shared ToonOut/Lucida inference path. Resizes input to 1024×1024, normalizes with ImageNet mean/std via `torchvision.transforms`, runs inference, resizes the predicted mask to the original dimensions, applies it as alpha, and normalizes alpha.
 
 `_apply_birefnet_compat_patch()`
 
@@ -186,13 +198,13 @@ Three independent passes on the extracted alpha channel:
 
 Finds individual sprites within an RGBA image using connected-component analysis and provides tools to merge nearby or manually specified sprites.
 
-`detect_sprites(rgba_image, min_area=500, padding=4) -> list[tuple]`
+`detect_sprites(rgba_image, min_width=8, min_height=8, padding=4) -> list[tuple]`
 
-Binarizes the alpha channel (threshold: `alpha > 10`), runs `cv2.connectedComponentsWithStats` with 8-connectivity, filters components below `min_area` pixels, adds `padding` px to all sides of each bounding box, and sorts results row-major (by vertical center band first, then horizontal center). Returns `list[(x1, y1, x2, y2)]`.
+Binarizes the alpha channel (threshold: `alpha > 10`), runs `cv2.connectedComponentsWithStats` with 8-connectivity, requires every component to meet both `min_width` and `min_height`, adds `padding` px to all sides of each bounding box, and sorts results row-major (by vertical center band first, then horizontal center). Returns `list[(x1, y1, x2, y2)]`.
 
 `merge_nearby_bboxes(bboxes, distance) -> list[tuple]`
 
-O(n²) pairwise edge-gap test: two boxes are "nearby" if the gap between their nearest edges is ≤ `distance` pixels in both horizontal and vertical directions. Uses Union-Find (`_union_find_groups`) to build connected groups, then merges each group to its bounding hull (`_merge_groups`).
+O(n²) pairwise center-distance test: two boxes are "nearby" when the Euclidean distance between their bounding-box centers is ≤ `distance` pixels. Uses Union-Find (`_union_find_groups`) to build connected groups, then merges each group to its bounding hull (`_merge_groups`).
 
 `apply_manual_merges(bboxes, merge_spec) -> list[tuple]`
 
@@ -243,18 +255,18 @@ Writes each PIL Image as a numbered PNG (`sprite_001.png`, `sprite_002.png`, …
 4. **`process`** opens each uploaded file with `PIL.Image.open(...).load()` and calls `_process_one` for each.
 
 5. **BG removal branch** in `_process_one`:
-   - `Flood-fill (fast)` → `remove_bg_floodfill(img, tolerance)`
    - `AI / rembg` → `remove_bg_ai(img, ai_model)`
    - `ToonOut (recommended) ⭐` → `remove_bg_toonout(img)` (downloads 885 MB weights on first use)
+   - `Lucida` → `remove_bg_lucida(img)` (downloads the pinned 885 MB model on first use)
    - `Skip (already transparent)` → `img.convert("RGBA")` only
 
 6. **Defringe** (if enabled): `defringe(rgba, bg_color, strength, spread)` reverses compositing artifacts at semi-transparent edges.
 
 7. **Alpha refinement** (if any slider is non-default): `refine_alpha_mask(rgba, smooth, expand, feather)` cleans up the mask.
 
-8. **Sprite detection:** `detect_sprites(rgba, min_area, padding)` binarizes alpha, runs `cv2.connectedComponentsWithStats`, filters, pads, and sorts.
+8. **Sprite detection:** `detect_sprites(rgba, min_width, min_height, padding)` binarizes alpha, runs `cv2.connectedComponentsWithStats`, filters by bounding-box dimensions, pads, and sorts.
 
-9. **Proximity merge** (if `merge_distance > 0`): `merge_nearby_bboxes(bboxes, merge_distance)` groups nearby components.
+9. **Center-proximity merge** (if `merge_distance > 0`): `merge_nearby_bboxes(bboxes, merge_distance)` groups components whose bounding-box centers are within the selected Euclidean distance.
 
 10. **Preview render:** `draw_bboxes(rgba, bboxes, preview_bg)` composites the sheet onto the chosen background with numbered red bounding boxes. This image is appended to the gallery.
 
@@ -274,28 +286,28 @@ Writes each PIL Image as a numbered PNG (`sprite_001.png`, `sprite_002.png`, …
 
 | UI Label | Code Parameter | Type | Default | Effect |
 |---|---|---|---|---|
-| Method | `bg_method` | str | `"Flood-fill (fast)"` | Selects BG removal path |
-| Flood-fill Tolerance | `tolerance` | int | `30` | `thresh = 255 − tolerance`; visible only for Flood-fill |
+| Method | `bg_method` | str | `"ToonOut (recommended) ⭐"` | Selects BG removal path |
 | AI Model | `ai_model` | str | `"isnet-anime"` | rembg session model; visible only for AI/rembg |
-| Enable Defringe | `do_defringe` | bool | `True` | Enables the defringe pass |
+| Enable Defringe | `do_defringe` | bool | `False` | Enables the optional defringe pass |
 | Defringe BG Color (preset) | `defringe_preset` | str | `"White"` | White/Black/Custom; resolves to hex string |
 | Custom color picker | `defringe_picker` | str | `"#ffffff"` | Active only when preset = Custom |
 | Defringe Strength | `defringe_strength` | float | `1.0` | Amplification of color correction (>1 = stronger) |
 | Defringe Spread (px) | `defringe_spread` | int | `0` | Extends correction ring into opaque border pixels |
-| Contract / Expand | `refine_expand` | int | `−1` | Negative = erode mask (shrink); positive = dilate |
+| Contract / Expand | `refine_expand` | int | `0` | Negative = erode mask (shrink); positive = dilate |
 | Smooth | `refine_smooth` | int | `0` | Morphological opening radius (removes speckles) |
 | Feather | `refine_feather` | float | `0.0` | Gaussian sigma on alpha for soft edges |
-| Min Sprite Area (px²) | `min_area` | int | `50` | Filters connected components smaller than this |
+| Minimum sprite width (px) | `min_width` | int | `8` | Rejects connected components narrower than this |
+| Minimum sprite height (px) | `min_height` | int | `8` | Rejects connected components shorter than this |
 | Padding around sprite | `padding` | int | `4` | Adds px to all sides of each detected bbox |
-| Auto-merge proximity | `merge_distance` | int | `0` | 0 = off; >0 = merge bboxes within this edge gap |
+| Auto-merge center distance | `merge_distance` | int | `0` | 0 = off; 1–400 = merge bboxes whose centers are within this Euclidean pixel distance |
 | Resize sprites | `do_resize` | bool | `True` | Enables letterbox resize to target canvas |
 | Target size (px) | `target_size` | int | `128` | Output canvas width & height; 128 = Discord emoji |
 | Preview background | `preview_bg` | str | `"black"` | `"black"` / `"white"` / `"checker"` |
 | Merge spec | `merge_spec` | str | `""` | e.g. `"1+3, 5+7+8"`; 1-based sprite indices |
 
 **Smart defaults when switching BG method:**
-- Switching to **AI / rembg** or **ToonOut**: `do_defringe` → `False`, `refine_expand` → `0` (AI models produce clean masks that don't need edge correction).
-- Switching to **Flood-fill**: `do_defringe` → `True`, `refine_expand` → `−1` (flood-fill tends to leave white halos; defringe + contract corrects them).
+- Switching among **AI / rembg**, **ToonOut**, **Lucida**, or **Skip** resets `do_defringe` to `False` and `refine_expand` to `0`.
+- Edge cleanup remains available when a particular image needs manual correction.
 
 ---
 
@@ -303,14 +315,13 @@ Writes each PIL Image as a numbered PNG (`sprite_001.png`, `sprite_002.png`, …
 
 | Package | Version Spec | Purpose |
 |---|---|---|
-| `gradio` | `>=4.0` | Web UI framework; WebSocket event loop, component library |
+| `gradio` | `>=4.0,<6.0` | Web UI framework; capped below the theme API break in 6.0 |
 | `opencv-python-headless` | latest | Connected-component analysis (`connectedComponentsWithStats`), morphological ops, bbox drawing |
 | `Pillow` | latest | Image open/save, crop, resize, RGBA compositing |
 | `numpy` | latest | Array-level alpha manipulation, checkerboard generation, defringe arithmetic |
-| `scipy` | latest | `scipy.ndimage.label` for flood-fill connected-component labeling |
 | `rembg[gpu]` | latest | 15 AI background-removal models via ONNX Runtime |
-| `torch` | latest | ToonOut inference runtime; CUDA device selection |
-| `torchvision` | latest | `transforms.Compose` pipeline for ToonOut preprocessing |
+| `torch` | latest | ToonOut and Lucida inference runtime; CUDA device selection |
+| `torchvision` | latest | Shared ToonOut and Lucida preprocessing |
 | `transformers` | latest | `AutoModelForImageSegmentation` for BiRefNet architecture loading |
 | `einops` | latest | Tensor rearrangement (required internally by BiRefNet) |
 | `kornia` | latest | Image geometry utilities (required internally by BiRefNet) |
@@ -327,11 +338,12 @@ AI model weights are **downloaded lazily** — nothing is fetched during `instal
 |---|---|---|---|
 | ToonOut (`birefnet_finetuned_toonout.pth`) | ~885 MB | `%USERPROFILE%\.cache\huggingface\hub` | First click of "ToonOut ⭐" |
 | BiRefNet base architecture (`ZhengPeng7/BiRefNet`) | ~150 MB | `%USERPROFILE%\.cache\huggingface\hub` | First click of "ToonOut ⭐" |
+| Lucida v6 (`egeorcun/lucida`) | ~885 MB | `%USERPROFILE%\.cache\huggingface\hub` | First click of "Lucida" |
 | rembg `isnet-anime` | ~176 MB | `%USERPROFILE%\.u2net\` | First click with "AI / rembg" + isnet-anime |
 | rembg `u2net` | ~176 MB | `%USERPROFILE%\.u2net\` | First click with "AI / rembg" + u2net |
 | rembg `u2netp` | ~4 MB | `%USERPROFILE%\.u2net\` | First click with "AI / rembg" + u2netp |
 | rembg BiRefNet variants | ~150–200 MB each | `%USERPROFILE%\.u2net\` | First click with matching model |
 
-**Worst-case total (all models):** approximately 2–3 GB. After the first session, all weights are cached and no further downloads occur.
+**Worst-case total (all models):** approximately 3–4 GB. After the first session, all weights are cached and no further downloads occur.
 
-The ToonOut model is loaded into a module-level variable (`_toonout_model`) and reused for every subsequent sheet in the same session — the 885 MB weight file is only parsed once per run.
+ToonOut and Lucida are loaded into separate module-level caches and reused for every subsequent sheet in the same session. Each 885 MB weight file is parsed only once per run.

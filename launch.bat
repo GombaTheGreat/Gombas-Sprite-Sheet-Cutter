@@ -44,7 +44,18 @@ if not exist "venv\Scripts\python.exe" (
 
 :: ── Install / update requirements ───────────────────────────────────────────
 echo [2/3] Installing / updating requirements...
-venv\Scripts\pip.exe install -r requirements.txt
+venv\Scripts\python.exe -m pip --version >nul 2>&1
+if errorlevel 1 (
+    echo       pip not found in the virtual environment, bootstrapping it...
+    venv\Scripts\python.exe -m ensurepip --upgrade
+    if errorlevel 1 (
+        echo ERROR: Failed to install pip in the virtual environment.
+        pause
+        exit /b 1
+    )
+)
+
+venv\Scripts\python.exe -m pip install -r requirements.txt
 if errorlevel 1 (
     echo ERROR: pip install failed. Check requirements.txt and your internet connection.
     pause

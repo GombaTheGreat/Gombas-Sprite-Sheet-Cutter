@@ -10,7 +10,7 @@ from bg_remover import (
     defringe,
     refine_alpha_mask,
     remove_bg_ai,
-    remove_bg_floodfill,
+    remove_bg_lucida,
     remove_bg_toonout,
 )
 from sprite_cutter import cut_sprites, pack_to_zip
@@ -37,7 +37,6 @@ def _hex_to_rgb(hex_color: str) -> tuple[int, int, int]:
 def _process_one(
     img: Image.Image,
     bg_method: str,
-    tolerance: int,
     ai_model: str,
     do_defringe: bool,
     defringe_hex: str,
@@ -46,7 +45,8 @@ def _process_one(
     refine_smooth: int,
     refine_expand: int,
     refine_feather: float,
-    min_area: int,
+    min_width: int,
+    min_height: int,
     padding: int,
     merge_distance: int,
     do_resize: bool,
@@ -56,12 +56,12 @@ def _process_one(
     """Process one sheet. Returns (preview, sprites, rgba, bboxes)."""
 
     # 1. Background removal
-    if bg_method == "Flood-fill (fast)":
-        rgba = remove_bg_floodfill(img, tolerance=tolerance)
-    elif bg_method == "AI / rembg":
+    if bg_method == "AI / rembg":
         rgba = remove_bg_ai(img, model_name=ai_model)
     elif bg_method == "ToonOut (recommended) ⭐":
         rgba = remove_bg_toonout(img)
+    elif bg_method == "Lucida":
+        rgba = remove_bg_lucida(img)
     else:
         rgba = img.convert("RGBA")
 
@@ -79,7 +79,12 @@ def _process_one(
         rgba = refine_alpha_mask(rgba, smooth=refine_smooth, expand=refine_expand, feather=refine_feather)
 
     # 4. Detect sprites
-    bboxes = detect_sprites(rgba, min_area=min_area, padding=padding)
+    bboxes = detect_sprites(
+        rgba,
+        min_width=min_width,
+        min_height=min_height,
+        padding=padding,
+    )
     if merge_distance > 0:
         bboxes = merge_nearby_bboxes(bboxes, merge_distance)
 
@@ -106,7 +111,6 @@ def redraw_previews(
 def process(
     input_files,
     bg_method: str,
-    tolerance: int,
     ai_model: str,
     do_defringe: bool,
     defringe_hex: str,
@@ -115,7 +119,8 @@ def process(
     refine_smooth: int,
     refine_expand: int,
     refine_feather: float,
-    min_area: int,
+    min_width: int,
+    min_height: int,
     padding: int,
     merge_distance: int,
     do_resize: bool,
@@ -144,10 +149,10 @@ def process(
 
         try:
             preview, sprites, rgba, bboxes = _process_one(
-                img, bg_method, tolerance, ai_model,
+                img, bg_method, ai_model,
                 do_defringe, defringe_hex, defringe_strength, defringe_spread,
                 refine_smooth, refine_expand, refine_feather,
-                min_area, padding, merge_distance, do_resize, target_size,
+                min_width, min_height, padding, merge_distance, do_resize, target_size,
                 preview_bg,
             )
         except BaseException as e:
@@ -158,7 +163,14 @@ def process(
         previews.append(preview)
         all_sprites.extend(sprites)
         sheet_data.append((rgba, bboxes))
-        sheet_counts.append(f"  Sheet {i}: {len(sprites)} sprites detected")
+        dimensions = ", ".join(
+            f"#{n} {x2 - x1}×{y2 - y1}"
+            for n, (x1, y1, x2, y2) in enumerate(bboxes, 1)
+        )
+        sheet_counts.append(
+            f"  Sheet {i}: {len(sprites)} sprites detected\n"
+            f"    Detected crop sizes before resize (W×H px): {dimensions}"
+        )
 
     if not all_sprites:
         # Always show per-sheet detail so errors are visible even when total = 0
@@ -317,16 +329,12 @@ with gr.Blocks(title="Gomba's Sprite Sheet Cutter", theme=_THEME) as demo:
                 bg_method = gr.Radio(
                     label="Method",
                     choices=[
-                        "Flood-fill (fast)",
                         "AI / rembg",
                         "ToonOut (recommended) ⭐",
+                        "Lucida",
                         "Skip (already transparent)",
                     ],
-                    value="Flood-fill (fast)",
-                )
-                tolerance_slider = gr.Slider(
-                    label="Flood-fill Tolerance — higher removes off-white backgrounds too",
-                    minimum=5, maximum=100, step=1, value=30, visible=True,
+                    value="ToonOut (recommended) ⭐",
                 )
                 ai_model_dropdown = gr.Dropdown(
                     label="AI Model",
@@ -337,7 +345,8 @@ with gr.Blocks(title="Gomba's Sprite Sheet Cutter", theme=_THEME) as demo:
                 )
                 gr.Markdown(
                     "<small>⭐ **ToonOut** — BiRefNet fine-tuned specifically for anime characters. "
-                    "Downloads ~885 MB on first use, then cached. Requires no extra config.</small>",
+                    "**Lucida** specialises in illustration, transparency, text, line art, camouflage, and glow. "
+                    "Each downloads ~885 MB on first use, then stays cached.</small>",
                     visible=True,
                 )
 
@@ -347,10 +356,10 @@ with gr.Blocks(title="Gomba's Sprite Sheet Cutter", theme=_THEME) as demo:
 
                 do_defringe = gr.Checkbox(
                     label="Defringe — remove background color bleed from semi-transparent edges",
-                    value=True,
+                    value=False,
                 )
 
-                with gr.Row(visible=True) as defringe_row:
+                with gr.Row(visible=False) as defringe_row:
                     defringe_preset = gr.Radio(
                         ["White", "Black", "Custom"],
                         value="White",
@@ -382,7 +391,7 @@ with gr.Blocks(title="Gomba's Sprite Sheet Cutter", theme=_THEME) as demo:
                     visible=False,
                 )
 
-                with gr.Row(visible=True) as defringe_tuning_row:
+                with gr.Row(visible=False) as defringe_tuning_row:
                     defringe_strength = gr.Slider(
                         label="Defringe Strength — amplify correction (>1 for heavy fringe)",
                         minimum=0.5, maximum=3.0, step=0.1, value=1.0,
@@ -396,7 +405,7 @@ with gr.Blocks(title="Gomba's Sprite Sheet Cutter", theme=_THEME) as demo:
 
                 refine_expand = gr.Slider(
                     label="Contract / Expand — negative shrinks inward to eliminate white halo",
-                    minimum=-10, maximum=10, step=1, value=-1,
+                    minimum=-10, maximum=10, step=1, value=0,
                 )
                 refine_smooth = gr.Slider(
                     label="Smooth — removes speckles and jagged pixel edges",
@@ -411,17 +420,22 @@ with gr.Blocks(title="Gomba's Sprite Sheet Cutter", theme=_THEME) as demo:
             with gr.Group():
                 gr.Markdown("### 3 · Detection & Export")
 
-                min_area_slider = gr.Slider(
-                    label="Min Sprite Area (px²) — raise to filter noise dots",
-                    minimum=0, maximum=100, step=1, value=50,
-                )
+                with gr.Row():
+                    min_width_slider = gr.Slider(
+                        label="Minimum sprite width (px)",
+                        minimum=0, maximum=512, step=1, value=8,
+                    )
+                    min_height_slider = gr.Slider(
+                        label="Minimum sprite height (px)",
+                        minimum=0, maximum=512, step=1, value=8,
+                    )
                 padding_slider = gr.Slider(
                     label="Padding around each sprite (px)",
                     minimum=0, maximum=40, step=1, value=4,
                 )
                 merge_distance_slider = gr.Slider(
-                    label="Auto-merge proximity (px) — merges sprites whose edges are within this distance (good for sparkles / accessories near a character)",
-                    minimum=0, maximum=200, step=1, value=0,
+                    label="Auto-merge center distance (px) — joins parts whose bounding-box centers are within this distance",
+                    minimum=0, maximum=400, step=1, value=0,
                 )
                 with gr.Row():
                     do_resize = gr.Checkbox(label="Resize sprites", value=True)
@@ -481,35 +495,56 @@ with gr.Blocks(title="Gomba's Sprite Sheet Cutter", theme=_THEME) as demo:
 
     inp_files.change(show_upload_preview, inputs=inp_files, outputs=inp_preview)
 
-    # Toggle method-specific controls AND auto-adjust edge cleanup defaults
+    # Toggle method-specific controls and reset cleanup for model-based removal
     def toggle_method_controls(method: str):
-        is_floodfill = method == "Flood-fill (fast)"
-        is_ai        = method == "AI / rembg"
-        is_toonout   = method == "ToonOut (recommended) ⭐"
-        is_manual_ai = is_ai or is_toonout  # both do full BG removal themselves
+        is_ai = method == "AI / rembg"
 
         return (
-            # show/hide method-specific controls
-            gr.update(visible=is_floodfill),   # tolerance_slider
-            gr.update(visible=is_ai),           # ai_model_dropdown
-            # edge cleanup: defringe is only useful after flood-fill (white BG residue)
-            gr.update(value=is_floodfill),      # do_defringe checkbox
-            gr.update(visible=is_floodfill),    # defringe_row
-            # contract default: -1 for flood-fill (trims white halo), 0 for AI (don't touch clean mask)
-            gr.update(value=-1 if is_floodfill else 0),  # refine_expand
+            gr.update(visible=is_ai),
+            gr.update(value=False),
+            gr.update(visible=False),
+            gr.update(visible=False),
+            gr.update(visible=False),
+            gr.update(visible=False),
+            False,
+            gr.update(value=0),
         )
 
     bg_method.change(
         toggle_method_controls,
         inputs=bg_method,
-        outputs=[tolerance_slider, ai_model_dropdown, do_defringe, defringe_row, refine_expand],
+        outputs=[
+            ai_model_dropdown,
+            do_defringe,
+            defringe_row,
+            defringe_tuning_row,
+            defringe_sampler_row,
+            color_sampler_img,
+            sampler_visible,
+            refine_expand,
+        ],
     )
 
-    # Toggle defringe row visibility (defringe_tuning_row handled below)
+    def toggle_defringe_controls(enabled: bool, preset: str):
+        custom = enabled and preset == "Custom"
+        return (
+            gr.update(visible=enabled),
+            gr.update(visible=enabled),
+            gr.update(visible=custom),
+            gr.update(visible=False),
+            False,
+        )
+
     do_defringe.change(
-        lambda v: gr.update(visible=v),
-        inputs=do_defringe,
-        outputs=defringe_row,
+        toggle_defringe_controls,
+        inputs=[do_defringe, defringe_preset],
+        outputs=[
+            defringe_row,
+            defringe_tuning_row,
+            defringe_sampler_row,
+            color_sampler_img,
+            sampler_visible,
+        ],
     )
 
     # Defringe preset → update picker, sampler row, sampler image, and sampler_visible state
@@ -542,12 +577,6 @@ with gr.Blocks(title="Gomba's Sprite Sheet Cutter", theme=_THEME) as demo:
         outputs=[defringe_picker, defringe_sampler_row, color_sampler_img, sampler_visible],
     )
 
-    # Toggle defringe tuning sliders with main checkbox
-    do_defringe.change(
-        lambda v: gr.update(visible=v),
-        inputs=do_defringe,
-        outputs=defringe_tuning_row,
-    )
 
     # "Pick from image" button → toggle the sampler image visibility
     show_sampler_btn.click(
@@ -594,11 +623,11 @@ with gr.Blocks(title="Gomba's Sprite Sheet Cutter", theme=_THEME) as demo:
 
     # Process button — resolve defringe color, run pipeline, store state
     def process_with_preset(
-        input_files, bg_method, tolerance, ai_model,
+        input_files, bg_method, ai_model,
         do_defringe, defringe_preset_val, defringe_picker_val,
         defringe_strength_val, defringe_spread_val,
         refine_smooth, refine_expand, refine_feather,
-        min_area, padding, merge_distance, do_resize, target_size, preview_bg,
+        min_width, min_height, padding, merge_distance, do_resize, target_size, preview_bg,
     ):
         if defringe_preset_val == "White":
             hex_color = "#ffffff"
@@ -608,10 +637,10 @@ with gr.Blocks(title="Gomba's Sprite Sheet Cutter", theme=_THEME) as demo:
             hex_color = defringe_picker_val
 
         return process(
-            input_files, bg_method, tolerance, ai_model,
+            input_files, bg_method, ai_model,
             do_defringe, hex_color, defringe_strength_val, defringe_spread_val,
             refine_smooth, refine_expand, refine_feather,
-            min_area, padding, merge_distance, do_resize, target_size, preview_bg,
+            min_width, min_height, padding, merge_distance, do_resize, target_size, preview_bg,
         )
 
     def apply_merges(sheet_data, merge_spec, do_resize, target_size, preview_bg):
@@ -653,7 +682,6 @@ with gr.Blocks(title="Gomba's Sprite Sheet Cutter", theme=_THEME) as demo:
         inputs=[
             inp_files,
             bg_method,
-            tolerance_slider,
             ai_model_dropdown,
             do_defringe,
             defringe_preset,
@@ -663,7 +691,8 @@ with gr.Blocks(title="Gomba's Sprite Sheet Cutter", theme=_THEME) as demo:
             refine_smooth,
             refine_expand,
             refine_feather,
-            min_area_slider,
+            min_width_slider,
+            min_height_slider,
             padding_slider,
             merge_distance_slider,
             do_resize,

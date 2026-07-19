@@ -3,7 +3,6 @@ from __future__ import annotations
 import cv2
 import numpy as np
 from PIL import Image
-from scipy.ndimage import label
 
 REMBG_MODELS = [
     "isnet-anime",
@@ -28,48 +27,6 @@ def _to_rgba(img: Image.Image) -> np.ndarray:
     return np.array(img.convert("RGBA"), dtype=np.uint8)
 
 
-def remove_bg_floodfill(pil_image: Image.Image, tolerance: int = 30) -> Image.Image:
-    """Remove background by flood-filling from all four corners.
-
-    Works because the background white is reachable from image edges while
-    sticker border white is enclosed by character art and unreachable.
-    """
-    arr = _to_rgba(pil_image)
-    h, w = arr.shape[:2]
-
-    thresh = 255 - tolerance
-    candidate = (
-        (arr[:, :, 0] >= thresh) &
-        (arr[:, :, 1] >= thresh) &
-        (arr[:, :, 2] >= thresh)
-    )
-
-    labeled, _ = label(candidate)
-    bg_labels: set[int] = set()
-
-    edge_coords = (
-        list(zip([0] * w, range(w))) +
-        list(zip([h - 1] * w, range(w))) +
-        list(zip(range(h), [0] * h)) +
-        list(zip(range(h), [w - 1] * h))
-    )
-    for ey, ex in edge_coords:
-        lbl = int(labeled[ey, ex])
-        if lbl != 0:
-            bg_labels.add(lbl)
-
-    if not bg_labels:
-        return Image.fromarray(arr, "RGBA")
-
-    bg_mask = np.zeros((h, w), dtype=bool)
-    for lbl in bg_labels:
-        bg_mask |= labeled == lbl
-
-    result = arr.copy()
-    result[bg_mask, 3] = 0
-    return Image.fromarray(result, "RGBA")
-
-
 def _normalize_alpha(rgba_image: Image.Image) -> Image.Image:
     """Scale alpha channel so its maximum value = 255.
 
@@ -83,7 +40,7 @@ def _normalize_alpha(rgba_image: Image.Image) -> Image.Image:
     if 0 < max_a < 255:
         alpha = (alpha / max_a * 255.0).clip(0, 255)
         arr[:, :, 3] = alpha.astype(np.uint8)
-    return Image.fromarray(arr, "RGBA")
+    return Image.fromarray(arr)
 
 
 def remove_bg_ai(pil_image: Image.Image, model_name: str = "isnet-anime") -> Image.Image:
@@ -118,7 +75,12 @@ def remove_bg_ai(pil_image: Image.Image, model_name: str = "isnet-anime") -> Ima
 # Module-level cache so the 885 MB model loads only once per session
 _toonout_model = None
 _toonout_device: str | None = None
+_lucida_model = None
+_lucida_device: str | None = None
 _birefnet_patched = False
+
+LUCIDA_MODEL_ID = "egeorcun/lucida"
+LUCIDA_REVISION = "a34eeda32a7f43b487e7a30532153f47946512fa"
 
 
 def _apply_birefnet_compat_patch() -> None:
@@ -185,21 +147,34 @@ def _load_toonout() -> tuple:
     return _toonout_model, _toonout_device
 
 
-def remove_bg_toonout(pil_image: Image.Image) -> Image.Image:
-    """Remove background using ToonOut — BiRefNet fine-tuned for anime characters.
+def _load_lucida() -> tuple:
+    """Download (once) and load the pinned Lucida model into memory."""
+    global _lucida_model, _lucida_device
+    if _lucida_model is not None:
+        return _lucida_model, _lucida_device
 
-    Downloads ~885 MB weights from HuggingFace on first use (cached afterwards).
-    Requires: torch, torchvision, transformers  (already in requirements.txt)
-    """
-    try:
-        import torch
-        from torchvision import transforms
-    except ImportError as e:
-        raise ImportError(
-            "ToonOut requires PyTorch. Run: pip install torch torchvision"
-        ) from e
+    import torch
+    from transformers import AutoModelForImageSegmentation
 
-    model, device = _load_toonout()
+    _apply_birefnet_compat_patch()
+
+    model = AutoModelForImageSegmentation.from_pretrained(
+        LUCIDA_MODEL_ID,
+        revision=LUCIDA_REVISION,
+        trust_remote_code=True,
+    )
+    _lucida_device = "cuda" if torch.cuda.is_available() else "cpu"
+    model.to(_lucida_device)
+    model.float()
+    model.eval()
+    _lucida_model = model
+    return _lucida_model, _lucida_device
+
+
+def _run_birefnet(pil_image: Image.Image, model, device: str) -> Image.Image:
+    """Run a loaded BiRefNet model and return a same-size RGBA image."""
+    import torch
+    from torchvision import transforms
 
     transform = transforms.Compose([
         transforms.Resize((1024, 1024)),
@@ -221,6 +196,22 @@ def remove_bg_toonout(pil_image: Image.Image) -> Image.Image:
     return _normalize_alpha(result.convert("RGBA"))
 
 
+def remove_bg_toonout(pil_image: Image.Image) -> Image.Image:
+    """Remove background using ToonOut, fine-tuned for anime characters.
+
+    Downloads ~885 MB weights from HuggingFace on first use (cached afterwards).
+    Requires: torch, torchvision, transformers  (already in requirements.txt)
+    """
+    model, device = _load_toonout()
+    return _run_birefnet(pil_image, model, device)
+
+
+def remove_bg_lucida(pil_image: Image.Image) -> Image.Image:
+    """Remove background using the pinned Lucida BiRefNet fine-tune."""
+    model, device = _load_lucida()
+    return _run_birefnet(pil_image, model, device)
+
+
 # --------------------------------------------------------------------------- #
 
 def defringe(
@@ -237,8 +228,7 @@ def defringe(
         fg = (composite - (1 - alpha) * bg) / alpha
 
     strength — amplifies the correction (>1.0 = more aggressive, useful for heavy fringe)
-    spread   — extends correction into the ring of fully-opaque pixels at the alpha border,
-               catching BG contamination that flood-fill left at alpha=1 edges
+    spread   — extends correction into the ring of fully-opaque pixels at the alpha border
     """
     arr = np.array(rgba_image.convert("RGBA"), dtype=np.float32)
     alpha = arr[:, :, 3] / 255.0
@@ -281,7 +271,7 @@ def defringe(
             result[:, :, :3],
         )
 
-    return Image.fromarray(result.astype(np.uint8), "RGBA")
+    return Image.fromarray(result.astype(np.uint8))
 
 
 def refine_alpha_mask(
@@ -327,4 +317,4 @@ def refine_alpha_mask(
 
     result = arr.copy()
     result[:, :, 3] = (alpha * 255).astype(np.uint8)
-    return Image.fromarray(result, "RGBA")
+    return Image.fromarray(result)

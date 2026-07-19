@@ -6,7 +6,7 @@
 
 > Drop in a sprite sheet, hit Process, download clean numbered PNGs — ready for Discord, Twitch, or your game engine.
 
-[![Version](https://img.shields.io/badge/version-1.0-CC5803.svg)](https://github.com/GombaTheGreat/Gombas-Sprite-Sheet-Cutter/releases)
+[![Version](https://img.shields.io/badge/version-1.1-CC5803.svg)](https://github.com/GombaTheGreat/Gombas-Sprite-Sheet-Cutter/releases)
 [![Platform](https://img.shields.io/badge/platform-Windows-0078d4.svg)](https://github.com/GombaTheGreat/Gombas-Sprite-Sheet-Cutter/releases)
 [![Python](https://img.shields.io/badge/python-3.10+-3776ab.svg)](https://www.python.org)
 
@@ -16,7 +16,7 @@
   </a>
   &nbsp;&nbsp;
   <a href="https://github.com/GombaTheGreat/Gombas-Sprite-Sheet-Cutter/releases/latest">
-    <img src="https://img.shields.io/badge/⬇%20Download-v1.0-f09050?style=for-the-badge" alt="Download v1.0" />
+    <img src="https://img.shields.io/badge/⬇%20Download-v1.1-f09050?style=for-the-badge" alt="Download v1.1" />
   </a>
 </p>
 
@@ -36,14 +36,15 @@ Drop in a sheet. Hit Process. Download your emojis. That's it.
 
 ## Features
 
-- 🎨 **Three background removal methods** — fast flood-fill for clean white backgrounds, a selection of AI/rembg models for trickier cases, and ToonOut (a BiRefNet model fine-tuned specifically for anime characters)
-- ✂️ **Automatic sprite detection** — finds every sprite on the sheet using connected-component analysis, no manual cropping needed
+- 🎨 **Four background removal options** — AI/rembg models, anime-specialist ToonOut, Lucida for illustration and soft transparency, or Skip for sheets that already have alpha
+- ✂️ **Automatic sprite detection** — finds every sprite on the sheet using connected-component analysis, with intuitive minimum width and height controls
 - 🔢 **Batch processing** — drop in multiple sheets at once, sprites are numbered sequentially across all of them
 - 📐 **Resize to any size** — built-in letterbox resize, defaults to 128×128 (perfect for Discord emojis)
 - 🖼️ **Live edge preview** — inspect your results against black, white, or checkerboard backgrounds before downloading
 - 🧹 **Edge cleanup tools** — defringe (with strength and spread controls), contract, smooth, and feather for pixel-perfect results
 - 🔬 **Eyedropper color picker** — click directly on the sprite sheet to sample the background color for defringe instead of typing a hex value
-- 🔗 **Auto-merge proximity** — automatically joins sprites whose edges are within a set pixel distance, perfect for characters with floating sparkles, hearts, or accessories that get detected as separate sprites
+- 🔗 **Auto-merge center proximity** — joins detected parts whose bounding-box centers are within a set distance, reducing accidental merges between neighboring full sprites
+- 📏 **Detected crop dimensions** — reports every numbered sprite's width × height before resizing, making size filters and auto-merge distances easier to tune
 - ✏️ **Manual merge** — look at the numbered preview and type e.g. `3+14+15` to manually join specific sprites into one bounding box, with instant ZIP re-export — no reprocessing needed
 
 ---
@@ -71,12 +72,13 @@ This app uses several open-source AI models. Their respective licenses apply:
 | **rembg** | Daniel Gatis | [MIT License](https://github.com/danielgatis/rembg/blob/main/LICENSE.txt) |
 | **BiRefNet** (base architecture) | ZhengPeng7 | [MIT License](https://github.com/ZhengPeng7/BiRefNet/blob/main/LICENSE) |
 | **ToonOut** (BiRefNet fine-tune) | joelseytre / MatteoKartoon | [BiRefNet license applies](https://github.com/MatteoKartoon/BiRefNet) |
+| **Lucida** (BiRefNet fine-tune) | Ege Orçun | [MIT model and code](https://huggingface.co/egeorcun/lucida) |
 | **isnet-anime / isnet-general-use** | xuebinqin | [MIT License](https://github.com/xuebinqin/DIS) |
 | **u2net** | xuebinqin | [Apache 2.0](https://github.com/xuebinqin/U-2-Net/blob/master/LICENSE) |
 | **Gradio** | Hugging Face | [Apache 2.0](https://github.com/gradio-app/gradio/blob/main/LICENSE) |
 | **PyTorch** | Meta / PyTorch team | [BSD License](https://github.com/pytorch/pytorch/blob/main/LICENSE) |
 
-This tool itself is free to use and share. Please respect the licenses of the underlying models, especially for commercial use.
+This tool itself is free to use and share. Please respect the licenses of the underlying models, especially for commercial use. Lucida's author also documents the mixed licenses of its training datasets in the [Lucida repository](https://github.com/egeorcun/lucida); commercial users should review that disclosure.
 
 ---
 
